@@ -11,11 +11,9 @@ import {
   Zap,
   Shield,
   Users,
-  ArrowRight,
   Star,
   TrendingUp,
   Brain,
-  Eye,
   Rocket,
 } from "lucide-react";
 
@@ -72,7 +70,7 @@ function StatCard({ value, label, icon: Icon, color }: StatCardProps) {
 }
 
 export default function Home() {
-  const [activeFeature, setActiveFeature] = useState(0);
+  const [_activeFeature, setActiveFeature] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
 
