@@ -16,10 +16,13 @@ import {
   Sparkles,
   Palette,
   Layout,
+  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CreateCV() {
+  const router = useRouter();
   const sampleLatex = `
 %-------------------------------------------------------------------------------
 % CONFIGURATIONS
@@ -211,44 +214,37 @@ Relationship: Employer
   return (
     <div className="flex flex-col h-[100dvh] bg-gradient-to-br from-gray-50 to-indigo-50 text-zinc-900 overflow-hidden font-sans">
       {/* --- Enhanced Header --- */}
-      <header className="flex-none flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-lg border-b border-zinc-200/50 shadow-lg z-30">
-        {/* Left: Brand with Home Navigation */}
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 w-9 p-0 rounded-full bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-all hover:scale-105 group"
-            >
-              <Home className="w-4 h-4 text-indigo-600 group-hover:text-indigo-700 transition-colors" />
-            </Button>
-          </Link>
+      <header className="flex flex-col md:flex-row items-center justify-between px-4 sm:px-6 py-4 bg-white/90 backdrop-blur-lg border-b border-zinc-200/50 shadow-lg z-30">
+        {/* Left: Brand with Back Button */}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start mb-3 md:mb-0">
+          <button
+            onClick={() => router.back()}
+            className="h-10 w-10 p-2 rounded-full bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-all hover:scale-105 flex items-center justify-center"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-indigo-600" />
+          </button>
 
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg shadow-lg">
-                <FileCode className="w-5 h-5 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-orange-500 p-1 rounded-full">
-                <Sparkles className="w-3 h-3 text-white" />
-              </div>
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg shadow-lg">
+              <FileCode className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hidden sm:block">
+              <h1 className="font-bold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Rezu.me
               </h1>
-              <p className="text-xs text-zinc-500 hidden sm:block">
+              <p className="text-xs sm:text-sm text-zinc-500">
                 Create professional resumes in real-time
               </p>
             </div>
           </div>
         </div>
 
-        {/* Mobile Tabs with Enhanced Design */}
-        <div className="flex md:hidden bg-gradient-to-r from-zinc-100 to-zinc-50 p-1 rounded-xl border border-zinc-200 shadow-inner">
+        {/* Mobile Tabs */}
+        <div className="flex w-full md:hidden gap-2 mb-3">
           <button
             onClick={() => setActiveMobileTab("editor")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
               activeMobileTab === "editor"
                 ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md"
                 : "text-zinc-500 hover:text-zinc-700 hover:bg-white/50"
@@ -259,7 +255,7 @@ Relationship: Employer
           </button>
           <button
             onClick={() => setActiveMobileTab("preview")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
               activeMobileTab === "preview"
                 ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
                 : "text-zinc-500 hover:text-zinc-700 hover:bg-white/50"
@@ -270,10 +266,10 @@ Relationship: Employer
           </button>
         </div>
 
-        {/* Enhanced Actions Toolbar */}
-        <div className="flex items-center gap-2">
+        {/* Actions Toolbar */}
+        <div className="flex flex-wrap w-full md:w-auto items-center gap-2 justify-between md:justify-end">
           {/* Status Indicator */}
-          <div className="hidden sm:flex items-center gap-3 mr-2 border-r border-zinc-200 pr-4">
+          <div className="flex items-center gap-3 border-r border-zinc-200 pr-4 mb-2 md:mb-0">
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500"></div>
@@ -297,8 +293,7 @@ Relationship: Employer
           </div>
 
           {/* Control Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Theme Toggle */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <Button
               variant="ghost"
               size="sm"
@@ -309,13 +304,12 @@ Relationship: Employer
               <Palette className="w-5 h-5 text-zinc-600" />
             </Button>
 
-            {/* Refresh Button */}
             <Button
               variant="outline"
               size="sm"
               onClick={generatePreview}
               disabled={loading}
-              className="h-10 min-w-[90px] border-zinc-300 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 transition-all hover:scale-105"
+              className="h-10 min-w-[90px] border-zinc-300 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 transition-all hover:scale-105 flex-1 md:flex-auto"
             >
               <RefreshCw
                 className={`w-5 h-5 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -323,12 +317,11 @@ Relationship: Employer
               <span className="hidden sm:inline">Refresh</span>
             </Button>
 
-            {/* Download Button */}
             <Button
               size="sm"
               onClick={handleDownload}
               disabled={!pdfUrl || loading}
-              className="h-10 min-w-[120px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 font-medium"
+              className="h-10 min-w-[120px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 font-medium flex-1 md:flex-auto"
             >
               <Download className="w-5 h-5 mr-2" />
               <span className="hidden sm:inline">Download PDF</span>

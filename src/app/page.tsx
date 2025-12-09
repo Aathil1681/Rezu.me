@@ -236,19 +236,16 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg shadow-lg">
                     <FileText className="w-6 h-6 text-white" />
                   </div>
-                  <div className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-orange-500 p-1 rounded-full animate-pulse">
-                    <Sparkles className="w-3 h-3 text-white" />
-                  </div>
                 </div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="!text-4xl font-sans lg:-mt-1 font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   Rezu.me
                 </span>
               </div>
 
-              <nav className="hidden md:flex items-center gap-6">
+              <nav className="hidden md:flex items-center gap-6 text-xl">
                 <Link
                   href="/under-construction"
-                  className="text-zinc-600 hover:text-indigo-600 transition-colors font-medium"
+                  className="text-zinc-600  hover:text-indigo-600 transition-colors font-medium"
                 >
                   Features
                 </Link>
@@ -271,20 +268,13 @@ export default function Home() {
                   About
                 </Link>
               </nav>
-
-              <Link href="/create-cv">
-                <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all">
-                  Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
             </div>
 
             {/* Hero Content */}
             <div className="text-center max-w-4xl mx-auto mb-20">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-zinc-200/50 mb-6 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-green-500 animate-pulse" />
-                <span className="text-sm font-medium text-zinc-700">
+                <span className="text-xl font-medium text-zinc-700">
                   AI-Powered Resume Builder
                 </span>
               </div>

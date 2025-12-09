@@ -17,14 +17,14 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "You are an expert AI Career Coach and Resume Scanner. Your goal is to extract data AND provide critical feedback.",
+            "You are an expert AI Career Coach. Extract data and provide a critical ATS score.",
         },
         {
           role: "user",
           content: `
-            Analyze the following resume text deeply.
+            Analyze this resume text.
             
-            Return the output in this strict JSON format:
+            Return strictly valid JSON (no markdown):
             {
               "fullName": "Name",
               "email": "Email",
@@ -39,22 +39,13 @@ export async function POST(req: Request) {
                 }
               ],
               "analysis": {
-                "jobTitle": "Inferred Job Title (e.g. Senior Backend Engineer)",
+                "score": 85, // Rate the resume from 0-100 based on completeness and ATS friendliness
+                "jobTitle": "Inferred Job Title",
                 "missingSkills": ["Critical Skill 1", "Critical Skill 2"],
-                "improvements": [
-                  "Actionable tip 1 (e.g. 'Quantify your impact in the X role')",
-                  "Actionable tip 2"
-                ],
-                "interviewQuestions": [
-                  "Question 1 (Technical)",
-                  "Question 2 (Behavioral)",
-                  "Question 3 (Problem Solving)"
-                ]
+                "improvements": ["Actionable tip 1", "Actionable tip 2"],
+                "interviewQuestions": ["Q1", "Q2", "Q3"]
               }
             }
-
-            If a field is missing, use "Not found".
-            Do NOT include markdown formatting. Just the raw JSON.
 
             RESUME TEXT:
             ${resumeText.slice(0, 25000)}
@@ -62,17 +53,14 @@ export async function POST(req: Request) {
         },
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.1, // Slightly higher for creativity in suggestions
+      temperature: 0.1,
     });
 
     let rawContent = completion.choices[0]?.message?.content || "{}";
-
-    // Cleanup to ensure valid JSON
     rawContent = rawContent
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
-
     const jsonOutput = JSON.parse(rawContent);
 
     return NextResponse.json({ output: jsonOutput });
