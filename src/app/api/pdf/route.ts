@@ -493,23 +493,16 @@ export async function POST(req: Request) {
 
     await browser.close();
 
-    // Create a proper Response with PDF buffer
-    // Convert Buffer to ArrayBuffer for Response
-    const pdfArrayBuffer = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    // Solution 1: Simple approach - Use NextResponse with Buffer
+    const response = new NextResponse(pdfBuffer);
+    response.headers.set("Content-Type", "application/pdf");
+    response.headers.set(
+      "Content-Disposition",
+      'inline; filename="rezu-me-cv.pdf"',
     );
+    response.headers.set("Cache-Control", "public, max-age=300, s-maxage=300");
 
-    // Return the PDF as a response
-    return new Response(pdfArrayBuffer, {
-      status: 200,
-      headers: new Headers({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'inline; filename="rezu-me-cv.pdf"',
-        "Cache-Control": "public, max-age=300, s-maxage=300",
-        "Content-Length": pdfBuffer.length.toString(),
-      }),
-    });
+    return response;
   } catch (err) {
     // Clean up browser if it exists
     if (browser) {
