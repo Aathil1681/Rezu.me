@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -15,12 +15,18 @@ import {
   Palette,
   Layout,
   ArrowLeft,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  FileDown,
 } from "lucide-react";
-
 import { useRouter } from "next/navigation";
 
 export default function CreateCV() {
   const router = useRouter();
+  const previewRef = useRef<HTMLIFrameElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const sampleLatex = `
 %-------------------------------------------------------------------------------
 % CONFIGURATIONS
@@ -155,11 +161,12 @@ Relationship: Employer
   const [latex, setLatex] = useState(sampleLatex);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pdfUrl, setPdfUrl] = useState<string>("");
+  const [previewHtml, setPreviewHtml] = useState<string>("");
   const [activeMobileTab, setActiveMobileTab] = useState<"editor" | "preview">(
     "editor",
   );
   const [editorTheme, setEditorTheme] = useState<"dark" | "light">("dark");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   async function generatePreview() {
     if (!latex.trim()) return;
@@ -175,15 +182,14 @@ Relationship: Employer
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to generate PDF");
+        throw new Error(data.error || "Failed to generate preview");
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
+      const html = await res.text();
+      setPreviewHtml(html);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to generate PDF");
+      setError(err.message || "Failed to generate preview");
     } finally {
       setLoading(false);
     }
@@ -196,18 +202,88 @@ Relationship: Employer
     return () => clearTimeout(timeout);
   }, [latex]);
 
-  const handleDownload = () => {
-    if (pdfUrl) {
+  const openPreviewInNewTab = () => {
+    if (previewHtml && typeof window !== "undefined") {
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(previewHtml);
+        printWindow.document.close();
+      }
+    }
+  };
+
+  const downloadAsPDF = async () => {
+    if (!previewHtml || isDownloading || typeof window === "undefined") return;
+
+    setIsDownloading(true);
+    setError("");
+
+    try {
+      // Method 1: Direct blob download with the HTML content
+      const blob = new Blob([previewHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+
+      // Open in new tab for user to print
+      const newWindow = window.open(url, "_blank");
+      if (newWindow) {
+        // Wait for window to load
+        setTimeout(() => {
+          newWindow.print();
+        }, 1000);
+      }
+
+      // Also create a download link for the HTML file as backup
       const a = document.createElement("a");
-      a.href = pdfUrl;
-      a.download = "resume.pdf";
+      a.href = url;
+      a.download = "resume.html";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      console.error("PDF download error:", err);
+      setError(
+        "Opening print dialog. Please select 'Save as PDF' in the print dialog.",
+      );
+
+      // Fallback: Open in new tab for manual printing
+      openPreviewInNewTab();
+    } finally {
+      setIsDownloading(false);
     }
   };
 
   const toggleEditorTheme = () => {
     setEditorTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
+
+  const toggleFullscreen = () => {
+    if (typeof document !== "undefined") {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (typeof document !== "undefined") {
+        setIsFullscreen(!!document.fullscreenElement);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-gradient-to-br from-gray-50 to-indigo-50 text-zinc-900 overflow-hidden font-sans">
@@ -270,7 +346,7 @@ Relationship: Employer
           <div className="flex items-center gap-3 border-r border-zinc-200 pr-4 mb-2 md:mb-0">
             {loading ? (
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500"></div>
+                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 animate-pulse"></div>
                 <span className="text-sm font-medium text-amber-700">
                   Processing...
                 </span>
@@ -303,6 +379,20 @@ Relationship: Employer
             </Button>
 
             <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleFullscreen}
+              className="h-10 w-10 p-0 rounded-full bg-white border border-zinc-200 hover:bg-zinc-50 hover:scale-105 transition-all"
+              title="Toggle fullscreen"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-5 h-5 text-zinc-600" />
+              ) : (
+                <Maximize2 className="w-5 h-5 text-zinc-600" />
+              )}
+            </Button>
+
+            <Button
               variant="outline"
               size="sm"
               onClick={generatePreview}
@@ -317,13 +407,31 @@ Relationship: Employer
 
             <Button
               size="sm"
-              onClick={handleDownload}
-              disabled={!pdfUrl || loading}
+              onClick={downloadAsPDF}
+              disabled={!previewHtml || loading || isDownloading}
               className="h-10 min-w-[120px] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 font-medium flex-1 md:flex-auto"
             >
-              <Download className="w-5 h-5 mr-2" />
-              <span className="hidden sm:inline">Download PDF</span>
+              {isDownloading ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-5 h-5 mr-2" />
+              )}
+              <span className="hidden sm:inline">
+                {isDownloading ? "Generating..." : "Download PDF"}
+              </span>
             </Button>
+
+            {previewHtml && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openPreviewInNewTab}
+                className="h-10 min-w-[100px] border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"
+              >
+                <ExternalLink className="w-5 h-5 mr-2" />
+                <span>Open</span>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -385,7 +493,7 @@ Relationship: Employer
           )}
         </div>
 
-        {/* Right Panel: Enhanced Preview - Made Larger */}
+        {/* Right Panel: Enhanced Preview */}
         <div
           className={`
             bg-gradient-to-br from-gray-50 to-indigo-50 relative flex flex-col
@@ -426,60 +534,93 @@ Relationship: Employer
               </div>
             </div>
 
-            {/* A4 Size Badge */}
+            {/* Format Badge */}
             <div className="hidden sm:flex items-center gap-2 text-sm text-zinc-600 bg-white/80 px-3 py-1.5 rounded-full border border-zinc-200/50">
               <FileText className="w-4 h-4" />
-              <span>A4 Format</span>
+              <span>Print-Ready Format</span>
             </div>
           </div>
 
-          {/* Preview Content - Made Much Larger */}
-          <div className="flex-1 p-2 md:p-4 flex flex-col items-center z-10">
-            {pdfUrl && (
-              <div className="w-full h-full flex flex-col items-center">
-                {/* Desktop: Large Preview with fixed aspect ratio */}
-                <div className="hidden md:block relative w-full h-full max-h-[90vh]">
-                  <div
-                    className="relative mx-auto rounded-xl shadow-2xl border-8 border-white bg-white overflow-hidden"
-                    style={{
-                      width: "100%",
-                      maxWidth: "900px",
-                      height: "calc(900px * 1.41)",
-                      maxHeight: "90vh",
-                    }}
-                  >
+          {/* Preview Content */}
+          <div className="flex-1 p-2 md:p-4 flex flex-col items-center justify-center z-10">
+            {previewHtml ? (
+              <div className="w-full h-full flex flex-col items-center justify-center">
+                {/* Desktop Preview */}
+                <div className="hidden md:block relative w-full h-full">
+                  <div className="relative mx-auto rounded-xl shadow-2xl border-8 border-white bg-white overflow-hidden w-full max-w-4xl h-[600px]">
                     <iframe
-                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                      ref={previewRef}
+                      srcDoc={previewHtml}
                       className="w-full h-full"
-                      title="PDF Preview"
+                      title="HTML Preview"
                     />
                   </div>
                 </div>
 
-                {/* Mobile: Full-width preview with vertical scrolling */}
+                {/* Mobile Preview */}
                 <div className="md:hidden w-full h-full">
-                  <div className="relative w-full h-full">
+                  <div className="relative w-full h-full min-h-[500px]">
                     <iframe
-                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                      className="w-full h-full min-h-[80vh] rounded-xl shadow-2xl border-4 border-white bg-white"
-                      title="PDF Preview"
+                      srcDoc={previewHtml}
+                      className="w-full h-full min-h-[500px] rounded-xl shadow-2xl border-4 border-white bg-white"
+                      title="HTML Preview"
                     />
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mb-4" />
+                    <p className="text-lg font-medium">Generating preview...</p>
+                    <p className="text-sm mt-2">
+                      Your resume is being processed
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-16 h-16 mb-4 text-zinc-300" />
+                    <p className="text-lg font-medium">No preview available</p>
+                    <p className="text-sm mt-2">
+                      Edit the LaTeX code to generate a preview
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons for Preview */}
+            {previewHtml && (
+              <div className="mt-4 flex flex-wrap gap-3 justify-center">
+                <Button
+                  onClick={openPreviewInNewTab}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in New Tab
+                </Button>
+                <Button
+                  onClick={downloadAsPDF}
+                  disabled={isDownloading}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileDown className="w-4 h-4 mr-2" />
+                  )}
+                  Download PDF
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* Floating Action Button for Mobile Download */}
-          {activeMobileTab === "preview" && pdfUrl && (
-            <div className="md:hidden fixed bottom-6 right-6 z-30">
-              <Button
-                size="lg"
-                onClick={handleDownload}
-                className="h-14 w-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-2xl hover:shadow-3xl hover:scale-110 transition-all"
-              >
-                <Download className="w-6 h-6" />
-              </Button>
+          {/* Info Banner */}
+          {previewHtml && (
+            <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 text-sm text-blue-700 flex items-center justify-center gap-2">
+              <Download className="w-4 h-4" />
+              <span>Click "Download PDF" to save your resume directly</span>
             </div>
           )}
         </div>
