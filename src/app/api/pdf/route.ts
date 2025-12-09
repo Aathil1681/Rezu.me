@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import chromium from "chrome-aws-lambda";
 
 /**
  * LaTeX to HTML converter with fixed layout logic.
@@ -136,6 +136,10 @@ function latexToHtml(latex: string): string {
 }
 
 export async function POST(req: Request) {
+  // Set a timeout for Vercel (max is 10 seconds for Hobby, 60 for Pro)
+  const timeout = 9000; // 9 seconds for safety
+  let browser: any = null;
+
   try {
     const { latexLikeContent } = await req.json();
 
@@ -448,19 +452,27 @@ export async function POST(req: Request) {
       </html>
     `;
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-      ],
+    // Use chrome-aws-lambda for Vercel compatibility
+    browser = await chromium.puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
     const page = await browser.newPage();
-    await page.setContent(fullHtml, { waitUntil: "networkidle0" });
 
-    const pdfBuffer = await page.pdf({
+    // Set content with networkidle0 for stability
+    await page.setContent(fullHtml, {
+      waitUntil: ["networkidle0"],
+    });
+
+    // Wait for fonts to load
+    await page.evaluateHandle("document.fonts.ready");
+
+    // Generate PDF with timeout
+    const pdfPromise = page.pdf({
       format: "Letter",
       margin: {
         top: "0.5in",
@@ -469,21 +481,67 @@ export async function POST(req: Request) {
         right: "0.5in",
       },
       printBackground: true,
+      preferCSSPageSize: true,
     });
+
+    // Handle timeout
+    const timeoutPromise = new Promise<Buffer>((_, reject) =>
+      setTimeout(() => reject(new Error("PDF generation timeout")), timeout),
+    );
+
+    const pdfBuffer = await Promise.race([pdfPromise, timeoutPromise]);
 
     await browser.close();
 
-    return new NextResponse(Buffer.from(pdfBuffer), {
-      headers: {
+    // Create a proper Response with PDF buffer
+    // Convert Buffer to ArrayBuffer for Response
+    const pdfArrayBuffer = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    );
+
+    // Return the PDF as a response
+    return new Response(pdfArrayBuffer, {
+      status: 200,
+      headers: new Headers({
         "Content-Type": "application/pdf",
         "Content-Disposition": 'inline; filename="rezu-me-cv.pdf"',
-      },
+        "Cache-Control": "public, max-age=300, s-maxage=300",
+        "Content-Length": pdfBuffer.length.toString(),
+      }),
     });
   } catch (err) {
+    // Clean up browser if it exists
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+
     console.error("PDF generation error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to generate PDF" },
-      { status: 500 },
-    );
+
+    // Provide more specific error messages
+    let errorMessage = "Failed to generate PDF";
+    if (err instanceof Error) {
+      if (err.message.includes("timeout")) {
+        errorMessage =
+          "PDF generation took too long. Please try with less content or contact support.";
+      } else if (
+        err.message.includes("Chrome") ||
+        err.message.includes("browser")
+      ) {
+        errorMessage = `Browser error: ${err.message}. Please try again or contact support.`;
+      } else {
+        errorMessage = err.message;
+      }
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+// Important: Configure max duration based on your Vercel plan
+export const maxDuration = 60; // 60 seconds for Pro plan, 10 for Hobby
+export const dynamic = "force-dynamic";
