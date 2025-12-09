@@ -12,13 +12,11 @@ import {
   Code2,
   Eye,
   FileCode,
-  Home,
-  Sparkles,
   Palette,
   Layout,
   ArrowLeft,
 } from "lucide-react";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 
 export default function CreateCV() {
